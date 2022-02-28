@@ -37,3 +37,8 @@ jobs:
           args: build --rm-dist --snapshot
       - name: Build Helm plugin
         run: make plugin
+      - name: Publish Helm Dump plugin
+        uses: actions/upload-artifact@v2
+        with:
+          name: helm-dump-plugin
+          path: "dist/plugin/*"
