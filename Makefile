@@ -10,7 +10,7 @@ test:
 build:
 	@goreleaser build --rm-dist --skip-validate
 
-plugin: build
+plugin:
 	@./hack/build-plugin.sh
 
 install: build plugin
