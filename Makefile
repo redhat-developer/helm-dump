@@ -3,6 +3,10 @@ HELM_DUMP_PLUGIN_DIR = $(HELM_PLUGINS)/helm-dump
 
 all: build
 
+.PHONY: test
+test:
+	go test -v ./...
+
 build: ./dist/helm-dump
 
 ./dist/helm-dump:
