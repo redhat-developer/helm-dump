@@ -1,9 +1,15 @@
 name: "dump"
 version: "0.1.0"
 usage: ""
-description: ""
+description: "A Helm plugin that creates a chart from a cluster's existing resources"
 ignoreFlags: false
 platformCommand:
   - os: linux
     arch: amd64
-    command: "$HELM_PLUGIN_DIR/helm-dump"
+    command: "$HELM_PLUGIN_DIR/helm-dump_linux_amd64/helm-dump"
+  - os: windows
+    arch: amd64
+    command: "$HELM_PLUGIN_DIR/helm-dump_windows_amd64/helm-dump.exe"
+  - os: darwin
+    arch: amd64
+    command: "$HELM_PLUGIN_DIR/helm-dump_darwin_amd64/helm-dump"
