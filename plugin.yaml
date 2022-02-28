@@ -1,0 +1,9 @@
+name: "dump"
+version: "0.1.0"
+usage: ""
+description: ""
+ignoreFlags: false
+platformCommand:
+  - os: linux
+    arch: amd64
+    command: "$HELM_PLUGIN_DIR/helm-dump"
