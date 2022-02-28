@@ -24,6 +24,7 @@ install: plugin
 	mkdir -p $(HELM_DUMP_PLUGIN_DIR)
 	install ./dist/plugin/* $(HELM_DUMP_PLUGIN_DIR)
 
+.PHONY: uninstall
 uninstall:
 	rm -fr $(HELM_DUMP_PLUGIN_DIR)
 
