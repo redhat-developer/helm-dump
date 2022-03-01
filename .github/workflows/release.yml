@@ -24,8 +24,7 @@ jobs:
           go-version: 1.17
       - name: Set up Python
         uses: actions/setup-python@v2
-        with:
-          cache: 'pip'
+      - run: pip install yq jq
       - name: Set environment variables
         run: echo "GOVERSION=$(go env GOVERSION)" >> $GITHUB_ENV
       - name: Run tests
