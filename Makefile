@@ -9,7 +9,7 @@ test:
 
 .PHONY: snapshot
 snapshot:
-	@goreleaser build --rm-dist --snapshot
+	@goreleaser release --rm-dist --snapshot
 
 .PHONY: build
 build:
