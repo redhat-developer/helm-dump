@@ -31,5 +31,7 @@ changelog:
   sort: asc
   filters:
     exclude:
+      - '^Initial commit$'
       - '^docs:'
       - '^test:'
+      - '^chore:'
