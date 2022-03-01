@@ -43,7 +43,7 @@ jobs:
         with:
           distribution: goreleaser
           version: latest
-          args: build --rm-dist --snapshot
+          args: release --rm-dist --snapshot
       - name: Build Helm plugin
         run: make plugin
       - name: Publish Helm Dump plugin
