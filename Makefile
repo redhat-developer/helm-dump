@@ -7,13 +7,20 @@ all: build
 test:
 	@go test -v ./...
 
+.PHONY: snapshot
+snapshot:
+	@goreleaser build --rm-dist --snapshot
+
+.PHONY: build
 build:
 	@goreleaser build --rm-dist --skip-validate
 
+.PHONY: plugin
 plugin:
 	@./hack/build-plugin.sh
 
-install: build plugin
+.PHONY: install
+install: plugin
 	@./hack/install-plugin.sh
 
 .PHONY: uninstall
