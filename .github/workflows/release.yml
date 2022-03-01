@@ -54,3 +54,12 @@ jobs:
         with:
           name: helm-dump-plugin
           path: "dist/plugin/*"
+      - name: Upload plugin to release
+        uses: svenstaro/upload-release-action@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          file: "dist/plugin/*"
+          tag: ${{ github.ref }}
+          overwrite: true
+          file_glob: true
+          asset_name: "helm-dump"
