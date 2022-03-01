@@ -14,6 +14,7 @@ echo "Installing plugin.yaml into ${HELM_DUMP_PLUGIN_DIR}"
 install "${PLUGIN_BUILD_DIR}/plugin.yaml" "${HELM_DUMP_PLUGIN_DIR}"
 
 for source_dir in "${DIST_DIR}"/helm-dump_*; do
+  test -d "$source_dir" || continue
   plugin_binary_dir=${source_dir#$DIST_DIR/}
   mkdir -p "${HELM_DUMP_PLUGIN_DIR}/${plugin_binary_dir}"
   echo "Adding ${plugin_binary_dir} to plugin bundle..."
