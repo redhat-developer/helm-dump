@@ -10,6 +10,12 @@ builds:
     goarch:
       - amd64
       - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/redhat-developer/helm-dump/cmd.version={{.Version}}
+      - -X github.com/redhat-developer/helm-dump/cmd.commit={{.Commit}}
+      - -X github.com/redhat-developer/helm-dump/cmd.date={{.Date}}
+      - -X github.com/redhat-developer/helm-dump/cmd.goVersion={{.Env.GOVERSION}}
 archives:
   - replacements:
       darwin: Darwin

@@ -2,26 +2,33 @@ package cmd
 
 import (
 	"bytes"
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"github.com/spf13/cobra"
 )
 
-//go:embed build.json
-var embeddedBuildInfo []byte
+var (
+	version   string
+	commit    string
+	date      string
+	goVersion string
+)
 
 type BuildInfo struct {
-	Version string `json:"version"`
+	Version   string `json:"version"`
+	Commit    string `json:"commit"`
+	Date      string `json:"date"`
+	GoVersion string `json:"goVersion"`
 }
 
 func init() {
-	var info BuildInfo
-	err := json.Unmarshal(embeddedBuildInfo, &info)
-	if err != nil {
-		panic(fmt.Errorf("couldn't find build information: %w", err))
+	info := &BuildInfo{
+		Version:   version,
+		Commit:    commit,
+		Date:      date,
+		GoVersion: goVersion,
 	}
-	rootCmd.AddCommand(NewVersionCmd(&info))
+	rootCmd.AddCommand(NewVersionCmd(info))
 }
 
 func NewVersionCmd(info *BuildInfo) *cobra.Command {
