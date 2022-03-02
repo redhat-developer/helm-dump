@@ -11,6 +11,15 @@ builds:
     goarch:
       - amd64
       - arm64
+      - "386"
+      - arm
+      - ppc64le
+      - s390x
+    ignore:
+      - goos: windows
+        goarch: "386"
+      - goos: windows
+        goarch: arm
     ldflags:
       - -s -w
       - -X github.com/redhat-developer/helm-dump/cmd.version={{.Version}}

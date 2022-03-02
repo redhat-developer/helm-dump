@@ -4,21 +4,31 @@ usage: ""
 description: "A Helm plugin that creates a chart from a cluster's existing resources"
 ignoreFlags: false
 platformCommand:
-  - os: linux
-    arch: amd64
-    command: "$HELM_PLUGIN_DIR/helm-dump_linux_amd64/helm-dump"
-  - os: linux
-    arch: arm64
-    command: "$HELM_PLUGIN_DIR/helm-dump_linux_arm64/helm-dump"
-  - os: windows
-    arch: amd64
-    command: "$HELM_PLUGIN_DIR/helm-dump_windows_amd64/helm-dump.exe"
-  - os: windows
-    arch: arm64
-    command: "$HELM_PLUGIN_DIR/helm-dump_windows_arm64/helm-dump.exe"
   - os: darwin
     arch: amd64
     command: "$HELM_PLUGIN_DIR/helm-dump_darwin_amd64/helm-dump"
   - os: darwin
     arch: arm64
     command: "$HELM_PLUGIN_DIR/helm-dump_darwin_arm64/helm-dump"
+  - os: linux
+    arch: amd64
+    command: "$HELM_PLUGIN_DIR/helm-dump_linux_amd64/helm-dump"
+  - os: linux
+    arch: arm
+    command: "$HELM_PLUGIN_DIR/helm-dump_linux_arm_6/helm-dump"
+  - os: linux
+    arch: arm64
+    command: "$HELM_PLUGIN_DIR/helm-dump_linux_arm64/helm-dump"
+  - os: linux
+    arch: 386
+    command: "$HELM_PLUGIN_DIR/helm-dump_linux_arm64/helm-dump"
+  - os: linux
+    arch: ppc64le
+    command: "$HELM_PLUGIN_DIR/helm-dump_linux_ppc64le/helm-dump"
+  - os: linux
+    arch: s390x
+    command: "$HELM_PLUGIN_DIR/helm-dump_linux_s390x/helm-dump"
+  - os: windows
+    arch: amd64
+    command: "$HELM_PLUGIN_DIR/helm-dump_windows_amd64/helm-dump.exe"
+
