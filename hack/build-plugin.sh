@@ -12,8 +12,10 @@ popd () {
 export pushd popd
 
 DIST_DIR=${DIST_DIR:-$PWD/dist}
-PLUGIN_SOURCE_DIR=${PLUGIN_SOURCE_DIR:-${DIST_DIR}/plugin}
-PLUGIN_OUTPUT_DIR=${PLUGIN_OUTPUT_DIR:-${DIST_DIR}/plugin-output}
+PLUGIN_ALIAS=dump
+PLUGIN_BUILD_WORKDIR=${PLUGIN_BUILD_WORKDIR:-${DIST_DIR}/plugin}
+PLUGIN_SOURCE_DIR=${PLUGIN_SOURCE_DIR:-${PLUGIN_BUILD_WORKDIR}/${PLUGIN_ALIAS}}
+PLUGIN_OUTPUT_DIR=${PLUGIN_OUTPUT_DIR:-${PLUGIN_BUILD_WORKDIR}/artifacts}
 
 mkdir -p "$PLUGIN_OUTPUT_DIR"
 
@@ -28,11 +30,11 @@ yq ".version |= \"$PLUGIN_VERSION\"" ./plugin.yaml > "${PLUGIN_SOURCE_DIR}/plugi
 echo "Done!"
 
 echo -n "Creating ${PLUGIN_BUNDLE_NAME}.tar.gz... "
-tar -cjf "${PLUGIN_OUTPUT_DIR}"/"${PLUGIN_BUNDLE_NAME}".tar.gz -C "${PLUGIN_SOURCE_DIR}" .
+tar -cjf "${PLUGIN_OUTPUT_DIR}/${PLUGIN_BUNDLE_NAME}.tar.gz" -C "${PLUGIN_BUILD_WORKDIR}/${PLUGIN_ALIAS}" .
 echo "Done!"
 
-echo -n "Creating ${PLUGIN_BUNDLE_NAME}.zip..."
-(cd "${PLUGIN_SOURCE_DIR}" && zip -q -r "${PLUGIN_OUTPUT_DIR}"/"${PLUGIN_BUNDLE_NAME}".zip .)
+echo -n "Creating ${PLUGIN_BUNDLE_NAME}.zip... "
+(cd "${PLUGIN_BUILD_WORKDIR}" && zip -q -r "${PLUGIN_OUTPUT_DIR}/${PLUGIN_BUNDLE_NAME}.zip" "${PLUGIN_ALIAS}")
 echo "Done!"
 
 pushd "${PLUGIN_OUTPUT_DIR}" || exit

@@ -58,7 +58,7 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          file: "dist/plugin-output/*"
+          file: "dist/plugin/artifacts/*"
           tag: ${{ github.ref }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           overwrite: true
