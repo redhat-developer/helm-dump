@@ -1,14 +1,43 @@
 #!/bin/bash
+# shellcheck disable=SC2120
 
-DIST_DIR=${DIST_DIR:-./dist}
-PLUGIN_BUILD_DIR=${PLUGIN_BUILD_DIR:-${DIST_DIR}/plugin}
+pushd () {
+    command pushd "$@" > /dev/null
+}
 
-echo "Building plugin in ${PLUGIN_BUILD_DIR}... "
-mkdir -p "${PLUGIN_BUILD_DIR}"
-cp -R "${DIST_DIR}"/helm-dump_*/ "${PLUGIN_BUILD_DIR}"
-cp ./plugin.yaml "${PLUGIN_BUILD_DIR}"
-yq ".version |= $(yq .version dist/metadata.json)" ./plugin.yaml > "${PLUGIN_BUILD_DIR}/plugin.yaml"
+popd () {
+    command popd "$@" > /dev/null
+}
 
-echo "Building tarball..."
-tar -cjf dist/helm-dump.tar.gz -C ./dist/plugin .
+export pushd popd
+
+DIST_DIR=${DIST_DIR:-$PWD/dist}
+PLUGIN_SOURCE_DIR=${PLUGIN_SOURCE_DIR:-${DIST_DIR}/plugin}
+PLUGIN_OUTPUT_DIR=${PLUGIN_OUTPUT_DIR:-${DIST_DIR}/plugin-output}
+
+mkdir -p "$PLUGIN_OUTPUT_DIR"
+
+PLUGIN_VERSION=$(yq .version "${DIST_DIR}"/metadata.json | xargs)
+PLUGIN_BUNDLE_NAME="helm-dump_${PLUGIN_VERSION}"
+
+echo -n "Building plugin in ${PLUGIN_SOURCE_DIR}... "
+mkdir -p "${PLUGIN_SOURCE_DIR}"
+cp -R "${DIST_DIR}"/helm-dump_*/ "${PLUGIN_SOURCE_DIR}"
+cp ./plugin.yaml "${PLUGIN_SOURCE_DIR}"
+yq ".version |= \"$PLUGIN_VERSION\"" ./plugin.yaml > "${PLUGIN_SOURCE_DIR}/plugin.yaml"
 echo "Done!"
+
+echo -n "Creating ${PLUGIN_BUNDLE_NAME}.tar.gz... "
+tar -cjf "${PLUGIN_OUTPUT_DIR}"/"${PLUGIN_BUNDLE_NAME}".tar.gz -C "${PLUGIN_SOURCE_DIR}" .
+echo "Done!"
+
+echo -n "Creating ${PLUGIN_BUNDLE_NAME}.zip..."
+(cd "${PLUGIN_SOURCE_DIR}" && zip -q -r "${PLUGIN_OUTPUT_DIR}"/"${PLUGIN_BUNDLE_NAME}".zip .)
+echo "Done!"
+
+pushd "${PLUGIN_OUTPUT_DIR}" || exit
+echo -n "Calculating checksum for plugin bundles... "
+shasum -a 256 "${PLUGIN_BUNDLE_NAME}".tar.gz >> "${PLUGIN_BUNDLE_NAME}".checksum.txt
+shasum -a 256 "${PLUGIN_BUNDLE_NAME}".zip >> "${PLUGIN_BUNDLE_NAME}".checksum.txt
+echo "Done!"
+popd || exit

@@ -7,6 +7,7 @@ builds:
     goos:
       - linux
       - darwin
+      - windows
     goarch:
       - amd64
       - arm64
@@ -17,7 +18,10 @@ builds:
       - -X github.com/redhat-developer/helm-dump/cmd.date={{.Date}}
       - -X github.com/redhat-developer/helm-dump/cmd.goVersion={{.Env.GOVERSION}}
 archives:
-  - replacements:
+  - format_overrides:
+      - goos: windows
+        format: zip
+    replacements:
       darwin: Darwin
       linux: Linux
       windows: Windows
