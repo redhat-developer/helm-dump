@@ -37,7 +37,8 @@ echo "Done!"
 
 pushd "${PLUGIN_OUTPUT_DIR}" || exit
 echo -n "Calculating checksum for plugin bundles... "
-shasum -a 256 "${PLUGIN_BUNDLE_NAME}".tar.gz >> "${PLUGIN_BUNDLE_NAME}".checksum.txt
-shasum -a 256 "${PLUGIN_BUNDLE_NAME}".zip >> "${PLUGIN_BUNDLE_NAME}".checksum.txt
+CHECKSUM_FILE="${PLUGIN_BUNDLE_NAME}.checksum.txt"
+shasum -a 256 "${PLUGIN_BUNDLE_NAME}".tar.gz >> "${CHECKSUM_FILE}"
+shasum -a 256 "${PLUGIN_BUNDLE_NAME}".zip >> "${CHECKSUM_FILE}"
 echo "Done!"
 popd || exit
