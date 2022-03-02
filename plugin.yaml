@@ -7,9 +7,18 @@ platformCommand:
   - os: linux
     arch: amd64
     command: "$HELM_PLUGIN_DIR/helm-dump_linux_amd64/helm-dump"
+  - os: linux
+    arch: arm64
+    command: "$HELM_PLUGIN_DIR/helm-dump_linux_arm64/helm-dump"
   - os: windows
     arch: amd64
     command: "$HELM_PLUGIN_DIR/helm-dump_windows_amd64/helm-dump.exe"
+  - os: windows
+    arch: arm64
+    command: "$HELM_PLUGIN_DIR/helm-dump_windows_arm64/helm-dump.exe"
   - os: darwin
     arch: amd64
     command: "$HELM_PLUGIN_DIR/helm-dump_darwin_amd64/helm-dump"
+  - os: darwin
+    arch: arm64
+    command: "$HELM_PLUGIN_DIR/helm-dump_darwin_arm64/helm-dump"
