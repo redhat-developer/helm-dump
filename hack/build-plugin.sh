@@ -30,7 +30,7 @@ yq ".version |= \"$PLUGIN_VERSION\"" ./plugin.yaml > "${PLUGIN_SOURCE_DIR}/plugi
 echo "Done!"
 
 echo -n "Creating ${PLUGIN_BUNDLE_NAME}.tar.gz... "
-tar -cjf "${PLUGIN_OUTPUT_DIR}/${PLUGIN_BUNDLE_NAME}.tar.gz" -C "${PLUGIN_BUILD_WORKDIR}/${PLUGIN_ALIAS}" .
+tar -czf "${PLUGIN_OUTPUT_DIR}/${PLUGIN_BUNDLE_NAME}.tar.gz" -C "${PLUGIN_BUILD_WORKDIR}" "${PLUGIN_ALIAS}"
 echo "Done!"
 
 echo -n "Creating ${PLUGIN_BUNDLE_NAME}.zip... "
