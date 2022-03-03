@@ -1,5 +1,5 @@
 export HELM_PLUGINS ?= $(HOME)/.local/share/helm/plugins
-export HELM_DUMP_PLUGIN_DIR = $(HELM_PLUGINS)/helm-dump
+export HELM_DUMP_PLUGIN_DIR = $(HELM_PLUGINS)/dump
 
 all: build
 
@@ -20,12 +20,12 @@ plugin:
 	@./hack/build-plugin.sh
 
 .PHONY: install
-install: plugin
-	@./hack/install-plugin.sh
+install:
+	@helm plugin install ./dist/plugin/dump/
 
 .PHONY: uninstall
 uninstall:
-	@rm -fr $(HELM_DUMP_PLUGIN_DIR)
+	@helm plugin uninstall dump
 
 .PHONY: clean
 clean:
