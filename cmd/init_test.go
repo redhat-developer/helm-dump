@@ -5,14 +5,28 @@ import (
 	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"io/ioutil"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
 	"os"
 	"path"
 	"testing"
 )
 
+func buildConfigFlagsAndRestConfig() (*genericclioptions.ConfigFlags, *rest.Config) {
+	configFlags := genericclioptions.NewConfigFlags(true)
+	restConfig, err := configFlags.ToRESTConfig()
+	if err != nil {
+		panic(err)
+	}
+	return configFlags, restConfig
+}
+
 func TestNewInitCmd(t *testing.T) {
 	t.Run("no-arguments", func(t *testing.T) {
-		cmd := NewInitCmd()
+		configFlags, restConfig := buildConfigFlagsAndRestConfig()
+		dynamicClient := dynamic.NewForConfigOrDie(restConfig)
+		cmd := NewInitCmd(configFlags, dynamicClient)
 
 		cmd.SetArgs([]string{})
 
@@ -26,7 +40,9 @@ func TestNewInitCmd(t *testing.T) {
 		outDir, err := ioutil.TempDir(os.TempDir(), "helm-dump")
 		require.NoError(t, err, "temp directory is required for testing")
 
-		cmd := NewInitCmd()
+		configFlags, restConfig := buildConfigFlagsAndRestConfig()
+		dynamicClient := dynamic.NewForConfigOrDie(restConfig)
+		cmd := NewInitCmd(configFlags, dynamicClient)
 
 		// helm dump init chart-dir
 		cmd.SetArgs([]string{

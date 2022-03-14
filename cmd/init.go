@@ -23,15 +23,14 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 )
 
-func NewInitCmd() *cobra.Command {
-	configFlags := genericclioptions.NewConfigFlags(true)
+func NewInitCmd(configFlags *genericclioptions.ConfigFlags, dynamicClient dynamic.Interface) *cobra.Command {
 
 	var initCmd = &cobra.Command{
 		Use:   "init chart-name output-dir",
 		Short: "generates a Helm chart from existing resources",
 		Long:  `Generates a Helm chart from existing resources`,
 		Args:  cobra.ExactArgs(2),
-		RunE:  buildInitCmd(configFlags),
+		RunE:  buildInitCmd(configFlags, dynamicClient),
 	}
 
 	configFlags.AddFlags(initCmd.Flags())
@@ -39,7 +38,10 @@ func NewInitCmd() *cobra.Command {
 	return initCmd
 }
 
-func buildInitCmd(configFlags *genericclioptions.ConfigFlags) func(cmd *cobra.Command, args []string) error {
+func buildInitCmd(
+	configFlags *genericclioptions.ConfigFlags,
+	dynamicClient dynamic.Interface,
+) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 
 		log := logrus.New()
@@ -52,17 +54,10 @@ func buildInitCmd(configFlags *genericclioptions.ConfigFlags) func(cmd *cobra.Co
 
 		discoveryClient.Invalidate()
 
-		restConfig, err := configFlags.ToRESTConfig()
-		if err != nil {
-			return err
-		}
-
 		discoveryHelper, err := discovery.NewHelper(discoveryClient, log)
 		if err != nil {
 			return err
 		}
-
-		dynamicClient := dynamic.NewForConfigOrDie(restConfig)
 
 		chartFiles := make([]*chart.File, 0)
 
@@ -175,5 +170,12 @@ func nameFromUnstructured(obj *unstructured.Unstructured) string {
 }
 
 func init() {
-	rootCmd.AddCommand(NewInitCmd())
+	configFlags := genericclioptions.NewConfigFlags(true)
+	restConfig, err := configFlags.ToRESTConfig()
+	if err != nil {
+		panic(err)
+	}
+
+	dynamicClient := dynamic.NewForConfigOrDie(restConfig)
+	rootCmd.AddCommand(NewInitCmd(configFlags, dynamicClient))
 }
