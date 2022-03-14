@@ -1,5 +1,6 @@
 export HELM_PLUGINS ?= $(HOME)/.local/share/helm/plugins
 export HELM_DUMP_PLUGIN_DIR = $(HELM_PLUGINS)/dump
+export GOVERSION = $(shell go env GOVERSION)
 
 all: build
 
