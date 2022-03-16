@@ -21,6 +21,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	velerov1api "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
+	"github.com/vmware-tanzu/velero/pkg/features"
 	"helm.sh/helm/v3/pkg/chart"
 )
 
@@ -28,17 +30,15 @@ type InitCommand struct {
 	*cobra.Command
 	Logger          *logrus.Logger
 	DynamicClient   dynamic.Interface
-	DiscoveryClient kdiscovery.DiscoveryInterface
-	DiscoveryHelper discovery.Helper
 	ConfigFlags     *genericclioptions.ConfigFlags
+	DiscoveryClient kdiscovery.CachedDiscoveryInterface
+	DiscoveryHelper discovery.Helper
 }
 
-func NewInitCmd(configFlags *genericclioptions.ConfigFlags, dynamicClient dynamic.Interface, discoveryClient kdiscovery.DiscoveryInterface, logger *logrus.Logger) (*InitCommand, error) {
-	discoveryHelper, err := discovery.NewHelper(discoveryClient, logger)
-	if err != nil {
-		return nil, err
-	}
-
+func NewInitCmd(
+	configFlags *genericclioptions.ConfigFlags,
+	logger *logrus.Logger,
+) (*InitCommand, error) {
 	initCmd := &InitCommand{
 		Command: &cobra.Command{
 			Use:   "init chart-name output-dir",
@@ -46,17 +46,47 @@ func NewInitCmd(configFlags *genericclioptions.ConfigFlags, dynamicClient dynami
 			Long:  `Generates a Helm chart from existing resources`,
 			Args:  cobra.ExactArgs(2),
 		},
-		Logger:          logger,
-		DynamicClient:   dynamicClient,
-		DiscoveryClient: discoveryClient,
-		DiscoveryHelper: discoveryHelper,
-		ConfigFlags:     configFlags,
+		Logger:      logger,
+		ConfigFlags: configFlags,
 	}
 	initCmd.Command.RunE = initCmd.runE
+	initCmd.Command.PreRunE = initCmd.preRunE
 
 	configFlags.AddFlags(initCmd.Flags())
 
 	return initCmd, nil
+}
+
+func (c *InitCommand) GetDiscoveryHelper() (discovery.Helper, error) {
+	return discovery.NewHelper(c.DiscoveryClient, c.Logger)
+}
+
+func (c *InitCommand) preRunE(_ *cobra.Command, _ []string) error {
+	if c.DynamicClient == nil {
+		restConfig, err := c.ConfigFlags.ToRESTConfig()
+		if err != nil {
+			return err
+		}
+		c.DynamicClient = dynamic.NewForConfigOrDie(restConfig)
+	}
+
+	if c.DiscoveryClient == nil {
+		var err error
+		c.DiscoveryClient, err = c.ConfigFlags.ToDiscoveryClient()
+		if err != nil {
+			return err
+		}
+	}
+
+	if c.DiscoveryHelper == nil {
+		var err error
+		c.DiscoveryHelper, err = discovery.NewHelper(c.DiscoveryClient, c.Logger)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (c *InitCommand) runE(cmd *cobra.Command, args []string) error {
@@ -159,11 +189,7 @@ func fileFromUnstructured(obj *unstructured.Unstructured, name string) (*chart.F
 	return file, nil
 }
 
-var replacer *strings.Replacer
-
-func init() {
-	replacer = strings.NewReplacer("/", "_", ".", "_")
-}
+var replacer = strings.NewReplacer("/", "_", ".", "_")
 
 func nameFromUnstructured(obj *unstructured.Unstructured) string {
 	apiVersion := replacer.Replace(obj.GetAPIVersion())
@@ -174,21 +200,11 @@ func init() {
 	logger := logrus.New()
 	logger.Level = logrus.DebugLevel
 
+	// required for the discovery.Helper to pull all api groups from the api server
+	features.Enable(velerov1api.APIGroupVersionsFeatureFlag)
+
 	configFlags := genericclioptions.NewConfigFlags(true)
-	restConfig, err := configFlags.ToRESTConfig()
-	if err != nil {
-		panic(err)
-	}
-
-	dynamicClient := dynamic.NewForConfigOrDie(restConfig)
-	discoveryClient, err := configFlags.ToDiscoveryClient()
-	if err != nil {
-		panic(err)
-	}
-
-	discoveryClient.Invalidate()
-
-	initCmd, err := NewInitCmd(configFlags, dynamicClient, discoveryClient, logger)
+	initCmd, err := NewInitCmd(configFlags, logger)
 	if err != nil {
 		panic(err)
 	}
