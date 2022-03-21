@@ -5,12 +5,14 @@ go 1.17
 require (
 	github.com/evanphx/json-patch v4.12.0+incompatible
 	github.com/ghodss/yaml v1.0.0
+	github.com/jarcoal/httpmock v1.1.0
 	github.com/konveyor/crane-lib v0.0.6
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/viper v1.10.0
 	github.com/stretchr/testify v1.7.0
 	github.com/vmware-tanzu/velero v1.8.0
+	gotest.tools v2.2.0+incompatible
 	helm.sh/helm/v3 v3.8.0
 	k8s.io/api v0.23.1
 	k8s.io/apimachinery v0.23.1
@@ -24,6 +26,7 @@ require (
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/evanphx/json-patch/v5 v5.5.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-errors/errors v1.0.1 // indirect
 	github.com/go-logr/logr v1.2.0 // indirect
