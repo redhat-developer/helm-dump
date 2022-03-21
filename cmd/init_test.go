@@ -8,9 +8,7 @@ import (
 	"io/ioutil"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	kdiscovery "k8s.io/client-go/discovery"
 	fakediscovery "k8s.io/client-go/discovery/fake"
@@ -18,6 +16,8 @@ import (
 	"os"
 	"path"
 	"testing"
+
+	"github.com/redhat-developer/helm-dump/pkg/test"
 )
 
 func TestNewInitCmd(t *testing.T) {
@@ -42,7 +42,7 @@ func TestNewInitCmd(t *testing.T) {
 		outDir, err := ioutil.TempDir(os.TempDir(), "helm-dump")
 		require.NoError(t, err, "temp directory is required for testing")
 
-		deployment := loadYamlFixture(t, "init_test/minimum-required-arguments/nginx-deployment.yaml")
+		deployment := test.LoadYamlFixture(t, "init_test/minimum-required-arguments/nginx-deployment.yaml")
 		scheme := runtime.NewScheme()
 
 		dynamicClient := fakedynamic.NewSimpleDynamicClient(scheme, deployment)
@@ -81,18 +81,6 @@ func TestNewInitCmd(t *testing.T) {
 
 		require.Len(t, chrt.Templates, 1, "chart should have only one template")
 	})
-}
-
-func loadYamlFixture(t *testing.T, path string) *unstructured.Unstructured {
-	obj := &unstructured.Unstructured{}
-	serializer := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
-	bytes, err := ioutil.ReadFile(path)
-	require.NoError(t, err)
-
-	_, _, err = serializer.Decode(bytes, nil, obj)
-	require.NoError(t, err)
-
-	return obj
 }
 
 type FakeCachedDiscovery struct {
