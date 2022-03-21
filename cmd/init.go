@@ -3,12 +3,14 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/konveyor/crane-lib/apply"
+	"github.com/konveyor/crane-lib/transform"
+	"github.com/redhat-developer/helm-dump/pkg/crane/plugin"
 	"github.com/vmware-tanzu/velero/pkg/discovery"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"path"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -28,6 +30,8 @@ import (
 
 type InitCommand struct {
 	*cobra.Command
+	PluginDir       string
+	SkipPlugins     []string
 	Logger          *logrus.Logger
 	DynamicClient   dynamic.Interface
 	ConfigFlags     *genericclioptions.ConfigFlags
@@ -53,6 +57,9 @@ func NewInitCmd(
 	initCmd.Command.PreRunE = initCmd.preRunE
 
 	configFlags.AddFlags(initCmd.Flags())
+
+	initCmd.PersistentFlags().StringVarP(&initCmd.PluginDir, "plugin-dir", "P", "plugins", "The path where binary plugins are located")
+	initCmd.PersistentFlags().StringSliceVarP(&initCmd.SkipPlugins, "skip-plugins", "S", nil, "A comma-separated list of plugins to skip")
 
 	return initCmd, nil
 }
@@ -92,6 +99,9 @@ func (c *InitCommand) preRunE(_ *cobra.Command, _ []string) error {
 func (c *InitCommand) runE(cmd *cobra.Command, args []string) error {
 	chartFiles := make([]*chart.File, 0)
 
+	runner := transform.Runner{Log: c.Logger}
+	plugins, err := plugin.GetFilteredPlugins(c.PluginDir, nil, c.Logger)
+
 	apiResourceLists := c.DiscoveryHelper.Resources()
 	for _, resourceList := range apiResourceLists {
 		gv, err := schema.ParseGroupVersion(resourceList.GroupVersion)
@@ -127,11 +137,22 @@ func (c *InitCommand) runE(cmd *cobra.Command, args []string) error {
 					return fmt.Errorf("expected *unstructured.Unstructured but got #{u}")
 				}
 
-				name := nameFromUnstructured(u)
-				name = path.Join("templates", name)
-				file, err := fileFromUnstructured(u, name)
+				resp, err := runner.Run(*u, plugins)
 				if err != nil {
 					return err
+				}
+
+				applier := apply.Applier{}
+				bytes, err := applier.Apply(*u, resp.TransformFile)
+				if err != nil {
+					return err
+				}
+
+				name := nameFromUnstructured(u)
+				name = path.Join("templates", name)
+				file := &chart.File{
+					Name: name,
+					Data: bytes,
 				}
 
 				chartFiles = append(chartFiles, file)
@@ -168,25 +189,6 @@ func (c *InitCommand) runE(cmd *cobra.Command, args []string) error {
 
 	return nil
 
-}
-
-func fileFromUnstructured(obj *unstructured.Unstructured, name string) (*chart.File, error) {
-	bytes, err := obj.MarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-
-	bytes, err = yaml.JSONToYAML(bytes)
-	if err != nil {
-		return nil, err
-	}
-
-	file := &chart.File{
-		Name: name,
-		Data: bytes,
-	}
-
-	return file, nil
 }
 
 var replacer = strings.NewReplacer("/", "_", ".", "_")

@@ -44,17 +44,17 @@ func TestRun(t *testing.T) {
 		require.Len(t, resp.Patches, 3)
 
 		nameOp := OperationAsserter(resp.Patches[0])
-		nameOp.requireKind(t, "replace")
+		nameOp.requireKind(t, "add")
 		nameOp.requirePath(t, "/metadata/name")
 		nameOp.requireValue(t, "nginx-deployment-{{ .Release.Name }}")
 
 		appNameOp := OperationAsserter(resp.Patches[1])
-		appNameOp.requireKind(t, "replace")
+		appNameOp.requireKind(t, "add")
 		appNameOp.requirePath(t, "/metadata/labels/app.kubernetes.io~1name")
 		appNameOp.requireValue(t, `{{ template "fullname" $ }}`)
 
 		appInstanceOp := OperationAsserter(resp.Patches[2])
-		appInstanceOp.requireKind(t, "replace")
+		appInstanceOp.requireKind(t, "add")
 		appInstanceOp.requirePath(t, "/metadata/labels/app.kubernetes.io~1instance")
 		appInstanceOp.requireValue(t, "{{ $.Release.Name }}")
 	})
@@ -71,7 +71,7 @@ func TestRun(t *testing.T) {
 		require.Len(t, resp.Patches, 4)
 
 		nameOp := OperationAsserter(resp.Patches[0])
-		nameOp.requireKind(t, "replace")
+		nameOp.requireKind(t, "add")
 		nameOp.requirePath(t, "/metadata/name")
 		nameOp.requireValue(t, "nginx-deployment-{{ .Release.Name }}")
 
@@ -81,12 +81,12 @@ func TestRun(t *testing.T) {
 		labelsOp.requireValue(t, map[string]interface{}{})
 
 		appNameOp := OperationAsserter(resp.Patches[2])
-		appNameOp.requireKind(t, "replace")
+		appNameOp.requireKind(t, "add")
 		appNameOp.requirePath(t, "/metadata/labels/app.kubernetes.io~1name")
 		appNameOp.requireValue(t, `{{ template "fullname" $ }}`)
 
 		appInstanceOp := OperationAsserter(resp.Patches[3])
-		appInstanceOp.requireKind(t, "replace")
+		appInstanceOp.requireKind(t, "add")
 		appInstanceOp.requirePath(t, "/metadata/labels/app.kubernetes.io~1instance")
 		appInstanceOp.requireValue(t, "{{ $.Release.Name }}")
 	})

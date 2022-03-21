@@ -62,6 +62,7 @@ func TestNewInitCmd(t *testing.T) {
 		configFlags := genericclioptions.NewConfigFlags(true)
 
 		cmd, _ := NewInitCmd(configFlags, logger)
+		cmd.PluginDir = "../plugins/helm_dump_init/dist/"
 		cmd.DiscoveryClient = discoveryClient
 		cmd.DynamicClient = dynamicClient
 		cmd.SetArgs([]string{
