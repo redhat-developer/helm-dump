@@ -6,6 +6,7 @@ all: build
 
 .PHONY: test
 test:
+	@make -C plugins/helm_dump_init build
 	@go test -v ./...
 
 .PHONY: snapshot
@@ -30,6 +31,7 @@ uninstall:
 
 .PHONY: clean
 clean:
+	@make -C plugins/helm_dump_init clean
 	@rm -fr ./dist
 
 .PHONY: tidy

@@ -81,6 +81,10 @@ func TestNewInitCmd(t *testing.T) {
 		require.NoError(t, err, "%q should be a chart", expectedChartPath)
 
 		require.Len(t, chrt.Templates, 1, "chart should have only one template")
+
+		actual := test.LoadBytesFixture(t, chrt.Templates[0].Data)
+		require.Equal(t, "nginx-deployment-{{ .Release.Name }}", actual.GetName(), "name should match; did you build helm_dump_init crane plugin?")
+
 	})
 }
 
