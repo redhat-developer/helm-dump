@@ -8,7 +8,9 @@ import (
 	"github.com/redhat-developer/helm-dump/pkg/crane/plugin"
 	"github.com/vmware-tanzu/velero/pkg/discovery"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -58,7 +60,17 @@ func NewInitCmd(
 
 	configFlags.AddFlags(initCmd.Flags())
 
-	initCmd.PersistentFlags().StringVarP(&initCmd.PluginDir, "plugin-dir", "P", "plugins", "The path where binary plugins are located")
+	ex, err := os.Executable()
+	if err != nil {
+		return nil, err
+	}
+
+	// Assume crane plugins will be available in the same directory as helm-dump is stored; this plays
+	// nicely in the current scenario where a release produces a bundle with binaries for all available
+	// architectures or in a different one where one bundle per
+	pluginDir := path.Join(filepath.Dir(ex), "crane-plugins")
+
+	initCmd.PersistentFlags().StringVarP(&initCmd.PluginDir, "plugin-dir", "P", pluginDir, "The path where binary plugins are located")
 	initCmd.PersistentFlags().StringSliceVarP(&initCmd.SkipPlugins, "skip-plugins", "S", nil, "A comma-separated list of plugins to skip")
 
 	return initCmd, nil
