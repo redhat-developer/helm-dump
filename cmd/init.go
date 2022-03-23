@@ -67,7 +67,7 @@ func NewInitCmd(
 
 	// Assume crane plugins will be available in the same directory as helm-dump is stored; this plays
 	// nicely in the current scenario where a release produces a bundle with binaries for all available
-	// architectures or in a different one where one bundle per
+	// targets or in a different one where one bundle per target.
 	pluginDir := path.Join(filepath.Dir(ex), "crane-plugins")
 
 	initCmd.PersistentFlags().StringVarP(&initCmd.PluginDir, "plugin-dir", "P", pluginDir, "The path where binary plugins are located")
