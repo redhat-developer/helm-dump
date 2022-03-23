@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sigs.k8s.io/yaml"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -156,6 +157,11 @@ func (c *InitCommand) runE(cmd *cobra.Command, args []string) error {
 
 				applier := apply.Applier{}
 				bytes, err := applier.Apply(*u, resp.TransformFile)
+				if err != nil {
+					return err
+				}
+
+				bytes, err = yaml.JSONToYAML(bytes)
 				if err != nil {
 					return err
 				}
