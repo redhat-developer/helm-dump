@@ -6,6 +6,7 @@ import (
 	"github.com/konveyor/crane-lib/apply"
 	"github.com/konveyor/crane-lib/transform"
 	"github.com/redhat-developer/helm-dump/pkg/crane/plugin"
+	chartutil2 "github.com/redhat-developer/helm-dump/pkg/helm/chartutil"
 	"github.com/vmware-tanzu/velero/pkg/discovery"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"os"
@@ -110,9 +111,13 @@ func (c *InitCommand) preRunE(_ *cobra.Command, _ []string) error {
 }
 
 func (c *InitCommand) runE(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
 	chartFiles := make([]*chart.File, 0)
 
-	runner := transform.Runner{Log: c.Logger}
+	runner := transform.Runner{Log: c.Logger, OptionalFlags: map[string]string{
+		"chart-name": name,
+	}}
 	plugins, err := plugin.GetFilteredPlugins(c.PluginDir, nil, c.Logger)
 
 	apiResourceLists := c.DiscoveryHelper.Resources()
@@ -134,6 +139,8 @@ func (c *InitCommand) runE(cmd *cobra.Command, args []string) error {
 			}
 			resourceInterface := c.DynamicClient.Resource(*gvr)
 
+			c.Logger.Debugf("Namespace: %q", *c.ConfigFlags.Namespace)
+
 			p := pager.New(func(ctx context.Context, opts metav1.ListOptions) (runtime.Object, error) {
 				return resourceInterface.Namespace(*c.ConfigFlags.Namespace).List(ctx, opts)
 			})
@@ -153,6 +160,11 @@ func (c *InitCommand) runE(cmd *cobra.Command, args []string) error {
 				resp, err := runner.Run(*u, plugins)
 				if err != nil {
 					return err
+				}
+
+				// don't ever bother applying the patches as a plugin has requested for this resource to be discarded
+				if resp.HaveWhiteOut {
+					return nil
 				}
 
 				applier := apply.Applier{}
@@ -183,11 +195,12 @@ func (c *InitCommand) runE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	chartFiles = append(chartFiles, chartutil2.DefaultHelpers(name))
+
 	for _, chartFile := range chartFiles {
 		c.Logger.Debugf("name: %s\ndata:\n%s", chartFile.Name, string(chartFile.Data))
 	}
 
-	name := args[0]
 	chrt := &chart.Chart{
 		Metadata: &chart.Metadata{
 			APIVersion: "v2",
@@ -216,6 +229,8 @@ func nameFromUnstructured(obj *unstructured.Unstructured) string {
 	return fmt.Sprintf("%s_%s.yaml", obj.GetName(), apiVersion)
 }
 
+var defaultNamespace = "default"
+
 func init() {
 	logger := logrus.New()
 	logger.Level = logrus.DebugLevel
@@ -224,6 +239,7 @@ func init() {
 	features.Enable(velerov1api.APIGroupVersionsFeatureFlag)
 
 	configFlags := genericclioptions.NewConfigFlags(true)
+	configFlags.Namespace = &defaultNamespace
 	initCmd, err := NewInitCmd(configFlags, logger)
 	if err != nil {
 		panic(err)

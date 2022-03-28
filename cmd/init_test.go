@@ -5,6 +5,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"io/ioutil"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -80,10 +81,14 @@ func TestNewInitCmd(t *testing.T) {
 		chrt, err := loader.LoadFile(expectedChartPath)
 		require.NoError(t, err, "%q should be a chart", expectedChartPath)
 
-		require.Len(t, chrt.Templates, 1, "chart should have only one template")
+		require.Len(t, chrt.Templates, 2)
 
-		actual := test.LoadBytesFixture(t, chrt.Templates[0].Data)
+		maybeDeployment := chrt.Templates[0]
+		actual := test.LoadBytesFixture(t, maybeDeployment.Data)
 		require.Equal(t, "nginx-deployment-{{ .Release.Name }}", actual.GetName(), "name should match; did you build helm_dump_init crane plugin?")
+
+		maybeHelpers := chrt.Templates[1]
+		require.Equal(t, chartutil.HelpersName, maybeHelpers.Name)
 
 	})
 }
