@@ -36,6 +36,7 @@ type InitCommand struct {
 	*cobra.Command
 	PluginDir       string
 	SkipPlugins     []string
+	LabelSelector   string
 	Logger          *logrus.Logger
 	DynamicClient   dynamic.Interface
 	ConfigFlags     *genericclioptions.ConfigFlags
@@ -74,6 +75,7 @@ func NewInitCmd(
 
 	initCmd.PersistentFlags().StringVarP(&initCmd.PluginDir, "plugin-dir", "P", pluginDir, "The path where binary plugins are located")
 	initCmd.PersistentFlags().StringSliceVarP(&initCmd.SkipPlugins, "skip-plugins", "S", nil, "A comma-separated list of plugins to skip")
+	initCmd.PersistentFlags().StringVarP(&initCmd.LabelSelector, "selector", "l", "", "A comma separated list of labels to filter resources")
 
 	return initCmd, nil
 }
@@ -142,6 +144,7 @@ func (c *InitCommand) runE(cmd *cobra.Command, args []string) error {
 			c.Logger.Debugf("Namespace: %q", *c.ConfigFlags.Namespace)
 
 			p := pager.New(func(ctx context.Context, opts metav1.ListOptions) (runtime.Object, error) {
+				opts.LabelSelector = c.LabelSelector
 				return resourceInterface.Namespace(*c.ConfigFlags.Namespace).List(ctx, opts)
 			})
 
