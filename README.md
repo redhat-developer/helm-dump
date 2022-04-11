@@ -159,7 +159,7 @@ deployment.apps/nginx-deployment created
 Now that we're happy with the deployment, it is fine to label the `Deployment` resource to be picked up by `helm dump init` on the next step:
 
 ```shell
-kubectl label deployment nginx-deployment helm-dump=true
+kubectl label deployment nginx-deployment helm-dump=please
 ```
 
 ```text
@@ -172,10 +172,10 @@ deployment.apps/nginx-deployment labeled
 Now that we have a template deployment running, `helm dump init` can be used to extract it to a Helm chart:
 
 ```shell
-helm dump init -l helm-dump=true my-chart /tmp/helm-dump-init-demo
+helm dump init -l helm-dump=please my-chart /tmp/helm-dump-init-demo
 ```
 
-Please note the usage of `-l helm-dump=true`: the `-l` option is equivalent to `kubectl`'s, so refer to `kubectl --help` for more information regarding its usage and semantics.
+Please note the usage of `-l helm-dump=please`: the `-l` option is equivalent to `kubectl`'s, so refer to `kubectl --help` for more information regarding its usage and semantics.
 
 The <file:///tmp/helm-dump-init-demo/my-chart-0.1.0.tgz> file should be available, so let's inspect its contents.
 
