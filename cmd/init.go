@@ -149,7 +149,7 @@ func (c *InitCommand) runE(cmd *cobra.Command, args []string) error {
 				return resourceInterface.List(ctx, opts)
 			})
 
-			list, _, err := p.List(cmd.Context(), metav1.ListOptions{})
+			list, _, err := p.List(cmd.Context(), metav1.ListOptions{LabelSelector: c.LabelSelector})
 			if err != nil {
 				c.Logger.Errorf("%s", err)
 				continue
