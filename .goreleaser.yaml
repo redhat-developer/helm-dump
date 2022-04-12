@@ -4,6 +4,8 @@ before:
 builds:
   - env:
       - CGO_ENABLED=0
+    id: helm-plugin
+    binary: "{{ .Target }}/helm-dump"
     goos:
       - linux
       - darwin
@@ -26,6 +28,27 @@ builds:
       - -X github.com/redhat-developer/helm-dump/cmd.commit={{.Commit}}
       - -X github.com/redhat-developer/helm-dump/cmd.date={{.Date}}
       - -X github.com/redhat-developer/helm-dump/cmd.goVersion={{.Env.GOVERSION}}
+  - env:
+      - CGO_ENABLED=0
+    id: crane-plugin
+    main: ./plugins/helm_dump_init
+    binary: "{{ .Target }}/crane-plugins/helm_dump_init"
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+      - "386"
+      - arm
+      - ppc64le
+      - s390x
+    ignore:
+      - goos: windows
+        goarch: "386"
+      - goos: windows
+        goarch: arm
 archives:
   - format_overrides:
       - goos: windows

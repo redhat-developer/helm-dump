@@ -24,7 +24,7 @@ PLUGIN_BUNDLE_NAME="helm-dump_${PLUGIN_VERSION}"
 
 echo -n "Building plugin in ${PLUGIN_SOURCE_DIR}... "
 mkdir -p "${PLUGIN_SOURCE_DIR}"
-cp -R "${DIST_DIR}"/helm-dump_*/ "${PLUGIN_SOURCE_DIR}"
+cp -R "${DIST_DIR}"/helm-plugin_*/* "${DIST_DIR}"/crane-plugin_*/* "${PLUGIN_SOURCE_DIR}"
 cp ./plugin.yaml "${PLUGIN_SOURCE_DIR}"
 yq ".version |= \"$PLUGIN_VERSION\"" ./plugin.yaml > "${PLUGIN_SOURCE_DIR}/plugin.yaml"
 echo "Done!"

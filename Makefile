@@ -1,10 +1,12 @@
 export HELM_PLUGINS ?= $(HOME)/.local/share/helm/plugins
 export HELM_DUMP_PLUGIN_DIR = $(HELM_PLUGINS)/dump
+export GOVERSION = $(shell go env GOVERSION)
 
 all: build
 
 .PHONY: test
 test:
+	@make -C plugins/helm_dump_init build
 	@go test -v ./...
 
 .PHONY: snapshot
@@ -29,6 +31,7 @@ uninstall:
 
 .PHONY: clean
 clean:
+	@make -C plugins/helm_dump_init clean
 	@rm -fr ./dist
 
 .PHONY: tidy
