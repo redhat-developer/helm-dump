@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -24,7 +23,7 @@ import (
 	fakedynamic "k8s.io/client-go/dynamic/fake"
 	ktesting "k8s.io/client-go/testing"
 
-	"github.com/redhat-developer/helm-dump/pkg/test"
+	hdtesting "github.com/redhat-developer/helm-dump/pkg/test"
 )
 
 var (
@@ -62,6 +61,21 @@ func newFakeCachedDiscovery(dynamicClient *fakedynamic.FakeDynamicClient) *FakeC
 	return discoveryClient
 }
 
+func makeInitCommandWorld(
+	configFlags *genericclioptions.ConfigFlags,
+	logger *logrus.Logger,
+	objects ...runtime.Object,
+) (*InitCommand, *FakeCachedDiscovery, *fakedynamic.FakeDynamicClient) {
+	scheme := runtime.NewScheme()
+	dynamicClient := fakedynamic.NewSimpleDynamicClient(scheme, objects...)
+	discoveryClient := newFakeCachedDiscovery(dynamicClient)
+	cmd, _ := NewInitCmd(configFlags, logger)
+	cmd.PluginDir = "../plugins/helm_dump_init/dist/"
+	cmd.DiscoveryClient = discoveryClient
+	cmd.DynamicClient = dynamicClient
+	return cmd, discoveryClient, dynamicClient
+}
+
 func TestNewInitCmd(t *testing.T) {
 
 	logger := logrus.New()
@@ -82,23 +96,16 @@ func TestNewInitCmd(t *testing.T) {
 		chartName := "my-chart"
 		chartVersion := "0.1.0"
 
-		outDir, err := ioutil.TempDir(os.TempDir(), "helm-dump")
-		require.NoError(t, err, "temp directory is required for testing")
+		tempDir := hdtesting.TempDir(t)
 
-		deployment := test.LoadYamlFixture(t, "init_test/minimum-required-arguments/nginx-deployment.yaml")
-		scheme := runtime.NewScheme()
+		cmd, discoveryClient, _ := makeInitCommandWorld(
+			genericclioptions.NewConfigFlags(true),
+			logger,
+			hdtesting.LoadYamlFixture(t, "init_test/minimum-required-arguments/nginx-deployment.yaml"))
 
-		dynamicClient := fakedynamic.NewSimpleDynamicClient(scheme, deployment)
-		discoveryClient := newFakeCachedDiscovery(dynamicClient)
-
-		configFlags := genericclioptions.NewConfigFlags(true)
-		cmd, _ := NewInitCmd(configFlags, logger)
-		cmd.PluginDir = "../plugins/helm_dump_init/dist/"
-		cmd.DiscoveryClient = discoveryClient
-		cmd.DynamicClient = dynamicClient
 		cmd.SetArgs([]string{
 			"--namespace", "default",
-			chartName, outDir})
+			chartName, tempDir})
 
 		// Act
 		require.NoError(t, cmd.Execute(), "Cmd must not return an error")
@@ -116,18 +123,17 @@ func TestNewInitCmd(t *testing.T) {
 		actualActions := FilterActions(discoveryClient.Actions())
 		CheckActions(t, expectedActions, actualActions)
 
-		expectedChartPath := path.Join(outDir, fmt.Sprintf("%s-%s.tgz", chartName, chartVersion))
-		_, err = os.Stat(expectedChartPath)
-		require.NoError(t, err, "%q should exist", expectedChartPath)
-
-		chrt, err := loader.LoadFile(expectedChartPath)
-		require.NoError(t, err, "%q should be a chart", expectedChartPath)
+		hdtesting.RequireChartFileExists(t, tempDir, chartName, chartVersion)
+		chrt := hdtesting.RequireChart(t, tempDir, chartName, chartVersion)
 
 		require.Len(t, chrt.Templates, 2)
 
 		maybeDeployment := chrt.Templates[0]
-		actual := test.LoadBytesFixture(t, maybeDeployment.Data)
-		require.Equal(t, "nginx-deployment-{{ .Release.Name }}", actual.GetName(), "name should match; did you build helm_dump_init crane plugin?")
+		actual := hdtesting.LoadBytesFixture(t, maybeDeployment.Data)
+		require.Equal(t,
+			"nginx-deployment-{{ .Release.Name }}",
+			actual.GetName(),
+			"name should match; did you build helm_dump_init crane plugin?")
 
 		maybeHelpers := chrt.Templates[1]
 		require.Equal(t, chartutil.HelpersName, maybeHelpers.Name)
@@ -139,27 +145,19 @@ func TestNewInitCmd(t *testing.T) {
 		chartVersion := "0.1.0"
 		labelSelector := "helm-dump=please"
 
-		outDir, err := ioutil.TempDir(os.TempDir(), "helm-dump")
-		require.NoError(t, err, "temp directory is required for testing")
+		tempDir := hdtesting.TempDir(t)
 
-		deployment1 := test.LoadYamlFixture(t, "init_test/using-selector/nginx-deployment1.yaml")
-		deployment2 := test.LoadYamlFixture(t, "init_test/using-selector/nginx-deployment2.yaml")
-		scheme := runtime.NewScheme()
-
-		dynamicClient := fakedynamic.NewSimpleDynamicClient(scheme, deployment1, deployment2)
-		discoveryClient := newFakeCachedDiscovery(dynamicClient)
-
-		configFlags := genericclioptions.NewConfigFlags(true)
-		cmd, _ := NewInitCmd(configFlags, logger)
-
-		cmd.PluginDir = "../plugins/helm_dump_init/dist/"
-		cmd.DiscoveryClient = discoveryClient
-		cmd.DynamicClient = dynamicClient
+		cmd, discoveryClient, _ := makeInitCommandWorld(
+			genericclioptions.NewConfigFlags(true),
+			logger,
+			hdtesting.LoadYamlFixture(t, "init_test/using-selector/nginx-deployment1.yaml"),
+			hdtesting.LoadYamlFixture(t, "init_test/using-selector/nginx-deployment2.yaml"),
+		)
 
 		cmd.SetArgs([]string{
 			"--namespace", "default",
 			"-l", labelSelector,
-			chartName, outDir})
+			chartName, tempDir})
 
 		// Act
 		require.NoError(t, cmd.Execute(), "Cmd must not return an error")
@@ -177,8 +175,8 @@ func TestNewInitCmd(t *testing.T) {
 		actualActions := FilterActions(discoveryClient.Actions())
 		CheckActions(t, expectedActions, actualActions)
 
-		expectedChartPath := path.Join(outDir, fmt.Sprintf("%s-%s.tgz", chartName, chartVersion))
-		_, err = os.Stat(expectedChartPath)
+		expectedChartPath := path.Join(tempDir, fmt.Sprintf("%s-%s.tgz", chartName, chartVersion))
+		_, err := os.Stat(expectedChartPath)
 		require.NoError(t, err, "%q should exist", expectedChartPath)
 
 		chrt, err := loader.LoadFile(expectedChartPath)
@@ -187,7 +185,7 @@ func TestNewInitCmd(t *testing.T) {
 		require.Len(t, chrt.Templates, 2, "chart should contain %d templates, found %d", 2, len(chrt.Templates))
 
 		maybeDeployment := chrt.Templates[0]
-		actual := test.LoadBytesFixture(t, maybeDeployment.Data)
+		actual := hdtesting.LoadBytesFixture(t, maybeDeployment.Data)
 		require.Equal(t, "nginx-deployment1-{{ .Release.Name }}", actual.GetName(), "name should match; did you build helm_dump_init crane plugin?")
 
 		maybeHelpers := chrt.Templates[1]
@@ -263,6 +261,16 @@ func YamlDiff(expected interface{}, actual interface{}) (string, error) {
 	}
 
 	return difflib.GetUnifiedDiffString(diff)
+}
+
+// ChartFileExists ...
+func ChartFileExists(
+	t *testing.T,
+	baseDir, chartName, chartVersion string,
+) {
+	expectedChartPath := path.Join(baseDir, fmt.Sprintf("%s-%s.tgz", chartName, chartVersion))
+	_, err := os.Stat(expectedChartPath)
+	require.NoError(t, err, "%q should exist", expectedChartPath)
 }
 
 var _ kdiscovery.DiscoveryInterface = &FakeCachedDiscovery{}
