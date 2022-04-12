@@ -137,13 +137,13 @@ spec:
   template:
     metadata:
       labels:
-	app: nginx
+        app: nginx
     spec:
       containers:
-	- name: nginx
-	  image: nginx:1.14.2
-	  ports:
-	    - containerPort: 80
+        - name: nginx
+          image: nginx:1.14.2
+          ports:
+            - containerPort: 80
 ```
 
 Now that we have inspected the contents of `nginx-deployment.yaml`, we can install it in the cluster using `kubectl`:
@@ -203,7 +203,7 @@ metadata:
     app: nginx
     app.kubernetes.io/instance: '{{ $.Release.Name }}'
     app.kubernetes.io/name: '{{ template "my-chart.fullname" $ }}'
-    helm-dump: "true"
+    helm-dump: "please"
   name: nginx-deployment-{{ .Release.Name }}
   namespace: default
 spec:
@@ -222,18 +222,18 @@ spec:
     metadata:
       creationTimestamp: null
       labels:
-	app: nginx
+        app: nginx
     spec:
       containers:
       - image: nginx:1.14.2
-	imagePullPolicy: IfNotPresent
-	name: nginx
-	ports:
-	- containerPort: 80
-	  protocol: TCP
-	resources: {}
-	terminationMessagePath: /dev/termination-log
-	terminationMessagePolicy: File
+        imagePullPolicy: IfNotPresent
+        name: nginx
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler
@@ -334,8 +334,8 @@ helm list
 ```
 
 ```text
-NAME  	NAMESPACE	REVISION	UPDATED                                 	STATUS  	CHART         	APP VERSION
-my-app	default  	1       	2022-04-11 12:33:33.854705256 +0200 CEST	deployed	my-chart-0.1.0	           
+NAME    NAMESPACE   REVISION    UPDATED                                     STATUS      CHART           APP VERSION
+my-app  default     1           2022-04-11 12:33:33.854705256 +0200 CEST    deployed    my-chart-0.1.0
 ```
 
 Let's end this section by checking the resources we've created so far:
