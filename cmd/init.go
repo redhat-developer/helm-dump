@@ -24,6 +24,7 @@ import (
 	kdiscovery "k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/pager"
+	"k8s.io/utils/pointer"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -36,6 +37,7 @@ type InitCommand struct {
 	*cobra.Command
 	PluginDir       string
 	SkipPlugins     []string
+	LabelSelector   string
 	Logger          *logrus.Logger
 	DynamicClient   dynamic.Interface
 	ConfigFlags     *genericclioptions.ConfigFlags
@@ -60,6 +62,7 @@ func NewInitCmd(
 	initCmd.Command.RunE = initCmd.runE
 	initCmd.Command.PreRunE = initCmd.preRunE
 
+	configFlags.Namespace = pointer.String("default")
 	configFlags.AddFlags(initCmd.Flags())
 
 	ex, err := os.Executable()
@@ -74,6 +77,7 @@ func NewInitCmd(
 
 	initCmd.PersistentFlags().StringVarP(&initCmd.PluginDir, "plugin-dir", "P", pluginDir, "The path where binary plugins are located")
 	initCmd.PersistentFlags().StringSliceVarP(&initCmd.SkipPlugins, "skip-plugins", "S", nil, "A comma-separated list of plugins to skip")
+	initCmd.PersistentFlags().StringVarP(&initCmd.LabelSelector, "selector", "l", "", "A comma separated list of labels to filter resources")
 
 	return initCmd, nil
 }
@@ -137,15 +141,15 @@ func (c *InitCommand) runE(cmd *cobra.Command, args []string) error {
 				Version:  gv.Version,
 				Resource: resource.Name,
 			}
-			resourceInterface := c.DynamicClient.Resource(*gvr)
+			resourceInterface := c.DynamicClient.Resource(*gvr).Namespace(*c.ConfigFlags.Namespace)
 
 			c.Logger.Debugf("Namespace: %q", *c.ConfigFlags.Namespace)
 
 			p := pager.New(func(ctx context.Context, opts metav1.ListOptions) (runtime.Object, error) {
-				return resourceInterface.Namespace(*c.ConfigFlags.Namespace).List(ctx, opts)
+				return resourceInterface.List(ctx, opts)
 			})
 
-			list, _, err := p.List(cmd.Context(), metav1.ListOptions{})
+			list, _, err := p.List(cmd.Context(), metav1.ListOptions{LabelSelector: c.LabelSelector})
 			if err != nil {
 				c.Logger.Errorf("%s", err)
 				continue
