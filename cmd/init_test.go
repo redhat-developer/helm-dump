@@ -6,8 +6,6 @@ import (
 	"path"
 	"testing"
 
-	"github.com/ghodss/yaml"
-	"github.com/pmezard/go-difflib/difflib"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -24,10 +22,6 @@ import (
 	ktesting "k8s.io/client-go/testing"
 
 	hdtesting "github.com/redhat-developer/helm-dump/pkg/test"
-)
-
-var (
-	ContextLines = 4
 )
 
 func newFakeCachedDiscovery(dynamicClient *fakedynamic.FakeDynamicClient) *FakeCachedDiscovery {
@@ -213,7 +207,7 @@ func CheckActions(t *testing.T, expected, actual []ktesting.Action) {
 
 func CheckAction(t *testing.T, expected, actual ktesting.Action) {
 	if !equality.Semantic.DeepEqual(expected, actual) {
-		diff, err := YamlDiff(expected, actual)
+		diff, err := hdtesting.YamlDiff(expected, actual)
 		if err != nil {
 			panic(fmt.Sprintf("couldn't generate yaml diff: %s", err))
 		}
@@ -239,28 +233,6 @@ func ShouldSkip(action ktesting.Action) bool {
 		return true
 	}
 	return false
-}
-
-func YamlDiff(expected interface{}, actual interface{}) (string, error) {
-	yamlActual, err := yaml.Marshal(actual)
-	if err != nil {
-		return "", err
-	}
-
-	yamlExpected, err := yaml.Marshal(expected)
-	if err != nil {
-		return "", err
-	}
-
-	diff := difflib.UnifiedDiff{
-		A:        difflib.SplitLines(string(yamlExpected)),
-		B:        difflib.SplitLines(string(yamlActual)),
-		FromFile: "Expected",
-		ToFile:   "Actual",
-		Context:  ContextLines,
-	}
-
-	return difflib.GetUnifiedDiffString(diff)
 }
 
 // ChartFileExists ...
