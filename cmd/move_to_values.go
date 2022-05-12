@@ -44,7 +44,7 @@ func (c *MoveToValuesCommand) runE(cmd *cobra.Command, args []string) error {
 	chartBuilder.AddAction(&Action{
 		apiVersion: args[0],
 		kind:       args[1],
-		field:      args[2],
+		path:       args[2],
 		template:   args[3],
 	})
 

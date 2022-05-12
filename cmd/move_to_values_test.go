@@ -43,7 +43,7 @@ func TestMoveToValuesCmd(t *testing.T) {
 			"apps/v1",
 			"Deployment",
 			`.spec.replicas`,
-			`{{ .metadata.name }}.replicas`,
+			`{{ resourceName . }}.replicas`,
 		})
 
 		// Act

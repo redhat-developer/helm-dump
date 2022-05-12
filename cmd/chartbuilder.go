@@ -9,6 +9,7 @@ import (
 
 	"github.com/ghodss/yaml"
 
+	_ "github.com/goccy/go-yaml"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -21,7 +22,7 @@ import (
 type Action struct {
 	apiVersion string
 	kind       string
-	field      string
+	path       string
 	template   string
 }
 
@@ -66,6 +67,97 @@ func actionMatchesGVK(action *Action, gvk *schema.GroupVersionKind) bool {
 	return actualApiVersion == action.apiVersion && actualKind == action.kind
 }
 
+func getJSONPathValue(obj map[string]interface{}, field string) (string, error) {
+	j := jsonpath.New("")
+	parseErr := j.Parse(fmt.Sprintf("{%s}", field))
+	if parseErr != nil {
+		return "", parseErr
+	}
+	execBuf := new(bytes.Buffer)
+	execErr := j.Execute(execBuf, obj)
+	if execErr != nil {
+		return "", execErr
+	}
+	val := execBuf.String()
+	return val, nil
+}
+
+func getResourceName(obj *unstructured.Unstructured) string {
+	anns := obj.GetAnnotations()
+	if anns == nil {
+		return "unknown"
+	}
+	name, ok := anns["helm-dump/name"]
+	if !ok {
+		return "unknown"
+	}
+	return name
+}
+
+func renderActionTemplate(obj *unstructured.Unstructured, tmpl string) (string, error) {
+	keyTmpl, err := template.New("").
+		Funcs(map[string]interface{}{"resourceName": getResourceName}).
+		Parse(tmpl)
+	if err != nil {
+		return "", err
+	}
+	keyBuf := new(bytes.Buffer)
+	keyTmplErr := keyTmpl.Execute(keyBuf, obj)
+	if keyTmplErr != nil {
+		return "", keyTmplErr
+	}
+	key := keyBuf.String()
+	return key, nil
+}
+
+func addToValuesYaml(
+	obj *unstructured.Unstructured,
+	valuesYaml map[string]interface{},
+	path string,
+	tmpl string,
+) (string, error) {
+	value, err := getJSONPathValue(obj.UnstructuredContent(), path)
+	if err != nil {
+		return "", err
+	}
+
+	key, renderErr := renderActionTemplate(obj, tmpl)
+	if renderErr != nil {
+		return "", err
+	}
+
+	setFieldErr := unstructured.SetNestedField(valuesYaml, value, strings.Split(key, ".")...)
+	if setFieldErr != nil {
+		return "", setFieldErr
+	}
+
+	return key, nil
+}
+
+func updateTemplate(
+	obj *unstructured.Unstructured,
+	valuesKey string,
+	path string,
+	tmpl *chart.File,
+) error {
+	templateNewValue := fmt.Sprintf(`{{ .Values.%s }}`, valuesKey)
+	fields := strings.Split(path, ".")
+	if fields[0] == "" {
+		fields = fields[1:]
+	}
+	setNestedFieldErr := unstructured.SetNestedField(obj.Object, templateNewValue, fields...)
+	if setNestedFieldErr != nil {
+		return setNestedFieldErr
+	}
+	newData, marshalErr := yaml.Marshal(obj.Object)
+	if marshalErr != nil {
+		return marshalErr
+	}
+	tmpl.Data = newData
+
+	return nil
+}
+
 func (b *ChartBuilder) Build() (*chart.Chart, error) {
 	chrt, loadErr := loader.LoadDir(b.ProjectRoot)
 	if loadErr != nil {
@@ -76,7 +168,7 @@ func (b *ChartBuilder) Build() (*chart.Chart, error) {
 		return nil, fmt.Errorf("error loading chart from %q: %w", projectRoot, loadErr)
 	}
 
-	values := make(map[string]interface{})
+	valuesYaml := make(map[string]interface{})
 
 	// 2. process template resources that match apiVersion and kind.
 TEMPLATE:
@@ -102,56 +194,21 @@ TEMPLATE:
 				continue ACTION
 			}
 
-			// extract template value with jsonpath (TODO: refactor this into a function)
-			j := jsonpath.New("")
-			parseErr := j.Parse(fmt.Sprintf("{%s}", action.field))
-			if parseErr != nil {
-				continue ACTION
-			}
-			execBuf := new(bytes.Buffer)
-			execErr := j.Execute(execBuf, obj.UnstructuredContent())
-			if execErr != nil {
-				continue ACTION
-			}
-			val := execBuf.String()
-
-			// collect value to values.yaml
-			keyTmpl, err := template.New("").Parse(action.template)
+			valuesKey, err := addToValuesYaml(obj, valuesYaml, action.path, action.template)
 			if err != nil {
 				continue ACTION
 			}
-			keyBuf := new(bytes.Buffer)
-			keyTmplErr := keyTmpl.Execute(keyBuf, obj.UnstructuredContent())
-			if keyTmplErr != nil {
-				continue ACTION
-			}
-			key := keyBuf.String()
-
-			// TODO: this is weak, should find a better way to collect the original resource name.
-			key = strings.ReplaceAll(key, "-{{ .Release.Name }}", "")
-			key = strings.ReplaceAll(key, "-", "_")
-			unstructured.SetNestedField(values, val, strings.Split(key, ".")...)
 
 			// update the template object
-			newVal := fmt.Sprintf(`{{ .Values.%s }}`, key)
-			fields := strings.Split(action.field, ".")
-			if fields[0] == "" {
-				fields = fields[1:]
-			}
-			setFieldErr := unstructured.SetNestedField(obj.Object, newVal, fields...)
-			if setFieldErr != nil {
+			updateTemplateErr := updateTemplate(obj, valuesKey, action.path, tmpl)
+			if updateTemplateErr != nil {
 				continue ACTION
 			}
-			newData, marshalErr := yaml.Marshal(obj.Object)
-			if marshalErr != nil {
-				continue ACTION
-			}
-			tmpl.Data = newData
 		}
 	}
 
 	// override chart values with the collected value
-	valuesBytes, marshalErr := yaml.Marshal(values)
+	valuesBytes, marshalErr := yaml.Marshal(valuesYaml)
 	if marshalErr != nil {
 		return nil, fmt.Errorf("error marshalling values: %w", marshalErr)
 	}
