@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -27,13 +28,15 @@ type Action struct {
 }
 
 type ChartBuilder struct {
+	Logger      *logrus.Logger
 	ProjectRoot string
 	OutputDir   string
 	Actions     []*Action
 }
 
-func NewChartBuilder(projectRoot string, outputDir string) (*ChartBuilder, error) {
+func NewChartBuilder(projectRoot string, outputDir string, logger *logrus.Logger) (*ChartBuilder, error) {
 	return &ChartBuilder{
+		Logger:      logger,
 		ProjectRoot: projectRoot,
 		OutputDir:   outputDir,
 	}, nil
@@ -158,6 +161,28 @@ func updateTemplate(
 	return nil
 }
 
+func appendValuesYaml(
+	chrt *chart.Chart,
+	valuesYaml map[string]interface{},
+) error {
+	// override chart values with the collected value
+	valuesBytes, marshalErr := yaml.Marshal(valuesYaml)
+	if marshalErr != nil {
+		return fmt.Errorf("error marshalling values: %w", marshalErr)
+	}
+
+	// include values.yaml in the chart.
+	chrt.Raw = append(
+		chrt.Raw,
+		&chart.File{
+			Name: chartutil.ValuesfileName,
+			Data: valuesBytes,
+		},
+	)
+
+	return nil
+}
+
 func (b *ChartBuilder) Build() (*chart.Chart, error) {
 	chrt, loadErr := loader.LoadDir(b.ProjectRoot)
 	if loadErr != nil {
@@ -183,6 +208,7 @@ TEMPLATE:
 
 		obj, gvk, decErr := decodeTemplate(tmpl)
 		if decErr != nil {
+			b.Logger.WithError(decErr).Errorf("error decoding template")
 			continue TEMPLATE
 		}
 
@@ -196,31 +222,23 @@ TEMPLATE:
 
 			valuesKey, err := addToValuesYaml(obj, valuesYaml, action.path, action.template)
 			if err != nil {
+				b.Logger.WithError(err).Errorf("error appending values.yaml")
 				continue ACTION
 			}
 
 			// update the template object
 			updateTemplateErr := updateTemplate(obj, valuesKey, action.path, tmpl)
 			if updateTemplateErr != nil {
+				b.Logger.WithError(err).Errorf("error updating template resource")
 				continue ACTION
 			}
 		}
 	}
 
-	// override chart values with the collected value
-	valuesBytes, marshalErr := yaml.Marshal(valuesYaml)
-	if marshalErr != nil {
-		return nil, fmt.Errorf("error marshalling values: %w", marshalErr)
+	appendValuesYamlErr := appendValuesYaml(chrt, valuesYaml)
+	if appendValuesYamlErr != nil {
+		return nil, appendValuesYamlErr
 	}
-
-	// include values.yaml in the chart.
-	chrt.Raw = append(
-		chrt.Raw,
-		&chart.File{
-			Name: chartutil.ValuesfileName,
-			Data: valuesBytes,
-		},
-	)
 
 	return chrt, nil
 }

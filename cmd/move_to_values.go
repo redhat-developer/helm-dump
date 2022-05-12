@@ -34,9 +34,9 @@ func NewMoveToValuesCmd(logger *logrus.Logger) (*MoveToValuesCommand, error) {
 	return cmd, nil
 }
 
-func (c *MoveToValuesCommand) runE(cmd *cobra.Command, args []string) error {
+func (c *MoveToValuesCommand) runE(_ *cobra.Command, args []string) error {
 
-	chartBuilder, err := NewChartBuilder(c.ProjectRoot, c.OutputDir)
+	chartBuilder, err := NewChartBuilder(c.ProjectRoot, c.OutputDir, c.Logger)
 	if err != nil {
 		return fmt.Errorf("error creating builder: %w", err)
 	}
