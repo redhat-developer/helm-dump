@@ -2,13 +2,12 @@ package cmd
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/parser"
+	"github.com/redhat-developer/helm-dump/pkg/cache"
+	"github.com/redhat-developer/helm-dump/pkg/visitor"
 	"github.com/sirupsen/logrus"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -33,11 +32,11 @@ type Action struct {
 }
 
 type ChartBuilder struct {
-	Logger        *logrus.Logger
-	ProjectRoot   string
-	OutputDir     string
-	ResourceCache *ResourceCache
-	Actions       []*Action
+	Logger      *logrus.Logger
+	ProjectRoot string
+	OutputDir   string
+	Cache       *cache.Cache
+	Actions     []*Action
 }
 
 func NewChartBuilder(projectRoot string, outputDir string, logger *logrus.Logger) (*ChartBuilder, error) {
@@ -45,7 +44,7 @@ func NewChartBuilder(projectRoot string, outputDir string, logger *logrus.Logger
 		Logger:      logger,
 		ProjectRoot: projectRoot,
 		OutputDir:   outputDir,
-		ResourceCache: &ResourceCache{
+		Cache: &cache.Cache{
 			RootDir: filepath.Join(projectRoot, ".helm-dump"),
 		},
 	}, nil
@@ -146,26 +145,11 @@ func addToValuesYaml(
 	return key, nil
 }
 
-type visitor struct {
-	path        string
-	beginOffset int
-	endOffset   int
-}
-
-func (v *visitor) Visit(node ast.Node) ast.Visitor {
-	yamlPath := fmt.Sprintf("$%s", v.path)
-	if node.GetPath() != yamlPath {
-		return v
-	}
-	if n, ok := node.(*ast.MappingNode); !ok {
-		return v
-	} else {
-		v.beginOffset = n.GetToken().Position.Offset
-		v.endOffset = n.GetToken().Next.Position.Offset
-
-		fmt.Printf("%s %s -> %d %d\n", n.GetPath(), n.GetToken().Type, v.beginOffset, v.endOffset)
-	}
-	return v
+func collectPatches(path string, node *ast.DocumentNode) []visitor.Patch {
+	collector := visitor.NewCollector()
+	v := visitor.NewMappingNodeVisitor(path, collector)
+	ast.Walk(v, node)
+	return collector.Patches
 }
 
 func updateTemplate(valuesKey string, path string, tmpl *chart.File) error {
@@ -174,21 +158,12 @@ func updateTemplate(valuesKey string, path string, tmpl *chart.File) error {
 		return fmt.Errorf("error parsing template data: %w", parseErr)
 	}
 
-	v := &visitor{path: path}
-	ast.Walk(v, tmplAst.Docs[0])
+	patches := collectPatches(path, tmplAst.Docs[0])
 
-	fst := tmpl.Data[0 : v.beginOffset+1]
-	snd := tmpl.Data[v.endOffset:len(tmpl.Data)]
-
-	templateNewData := bytes.Join(
-		[][]byte{
-			fst,
-			[]byte(fmt.Sprintf("{{ .Values.%s }}\n", valuesKey)),
-			snd,
-		},
-		[]byte{})
-
-	tmpl.Data = templateNewData
+	// Patches order must be descendent based on beginOffset.
+	for _, p := range patches {
+		tmpl.Data = p.Apply(valuesKey, tmpl.Data)
+	}
 
 	return nil
 }
@@ -215,67 +190,8 @@ func appendValuesYaml(
 	return nil
 }
 
-type ResourceCache struct {
-	RootDir string
-}
-
-func (c *ResourceCache) GetResourcePath(key string) string {
-	maybeResourcePath := filepath.Join(c.RootDir, replacer.Replace(key))
-	return maybeResourcePath
-}
-
-func (c *ResourceCache) Exists(key string) (bool, error) {
-	_, err := os.Stat(c.GetResourcePath(key))
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func (c *ResourceCache) Store(key string, data []byte) error {
-	if _, err := os.Stat(c.RootDir); errors.Is(err, os.ErrNotExist) {
-		mkdirErr := os.MkdirAll(c.RootDir, os.ModePerm)
-		if mkdirErr != nil {
-			return fmt.Errorf("error creating cache root dir: %w", mkdirErr)
-		}
-	}
-	err := ioutil.WriteFile(c.GetResourcePath(key), data, 0644)
-	if err != nil {
-		return fmt.Errorf("error writing resource cache: %w", err)
-	}
-	return nil
-}
-
-func (c *ResourceCache) GetCachedResource(key string, data []byte) ([]byte, error) {
-	exists, err := c.Exists(key)
-	if err != nil {
-		return nil, fmt.Errorf("error checking if cache key exists: %w", err)
-	}
-	if exists {
-		cachedBytes, err := ioutil.ReadFile(c.GetResourcePath(key))
-		if err != nil {
-			return nil, fmt.Errorf("error reading cached resource: %w", err)
-		}
-		return cachedBytes, nil
-	}
-
-	var out map[string]interface{}
-	unmarshalErr := yaml.Unmarshal(data, &out)
-	if unmarshalErr != nil {
-		return nil, fmt.Errorf("error unmarshalling resource bytes: %w", unmarshalErr)
-	}
-	storeErr := c.Store(key, data)
-	if storeErr != nil {
-		return nil, storeErr
-	}
-	return data, nil
-}
-
 func (b *ChartBuilder) GetCachedResource(tmpl *chart.File) (*chart.File, error) {
-	cachedBytes, err := b.ResourceCache.GetCachedResource(tmpl.Name, tmpl.Data)
+	cachedBytes, err := b.Cache.GetCachedResource(tmpl.Name, tmpl.Data)
 	if err != nil {
 		return nil, err
 	}
