@@ -24,12 +24,13 @@ func NewMappingNodeVisitor(path string, collector *Collector) *MappingNodeVisito
 func (v *MappingNodeVisitor) Visit(node ast.Node) ast.Visitor {
 	if node.GetPath() != v.YamlPath {
 		return v
-	} else if n, ok := node.(*ast.MappingNode); !ok {
-		return v
-	} else if node.GetPath() != v.YamlPath {
-		return v
-	} else {
+	}
+
+	switch n := node.(type) {
+	case *ast.MappingValueNode:
 		v.Collector.AddPatch(v.path, n.GetToken().Position.Offset, n.GetToken().Next.Position.Offset)
+		return v
+	default:
 		return v
 	}
 }
