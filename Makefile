@@ -1,6 +1,14 @@
 export HELM_PLUGINS ?= $(HOME)/.local/share/helm/plugins
 export HELM_DUMP_PLUGIN_DIR = $(HELM_PLUGINS)/dump
 export GOVERSION = $(shell go env GOVERSION)
+export GORELEASER_BUILD_SINGLE_TARGET ?=
+
+SINGLE_TARGET ?=
+
+ifdef SINGLE_TARGET
+SINGLE_TARGET =--single-target
+endif
+
 
 all: build
 
@@ -15,7 +23,7 @@ snapshot:
 
 .PHONY: build
 build:
-	@goreleaser build --rm-dist --skip-validate
+	@goreleaser build --rm-dist --skip-validate $(SINGLE_TARGET)
 
 .PHONY: plugin
 plugin:

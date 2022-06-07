@@ -46,6 +46,14 @@ func Run(request transform.PluginRequest) (transform.PluginResponse, error) {
 		`{"op": "add", "path": "/metadata/labels/app.kubernetes.io~1instance", "value": "{{ $.Release.Name }}"}`,
 	)
 
+	// keep the original name for modifications in other commands (so removing Helm
+	// template data from the name is not necessary in other CLI commands).
+	if anns := obj.GetAnnotations(); anns == nil {
+		opsJSON = append(opsJSON, `{"op": "add", "path": "/metadata/annotations", "value": {}}`)
+	}
+
+	opsJSON = append(opsJSON, fmt.Sprintf(`{"op": "add", "path": "/metadata/annotations/helm-dump~1name", "value": "%s"}`, obj.GetName()))
+
 	opsJSON = append(opsJSON, `{"op": "remove", "path": "/metadata/managedFields"}`)
 
 	patchJSON := fmt.Sprintf("[%s]", strings.Join(opsJSON, ","))

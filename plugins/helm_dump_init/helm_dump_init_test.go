@@ -31,9 +31,9 @@ func (m OperationAsserter) requireKind(t *testing.T, expected string) {
 
 func TestRun(t *testing.T) {
 
-	t.Run("with-labels", func(t *testing.T) {
+	t.Run("with-metadata", func(t *testing.T) {
 		// Arrange
-		fixture := test.LoadYamlFixture(t, "test/test_run/nginx-deployment-with-labels.yaml")
+		fixture := test.LoadYamlFixture(t, "test/test_run/nginx-deployment-with-metadata.yaml")
 		req := transform.PluginRequest{
 			Unstructured: *fixture,
 			Extras: map[string]string{
@@ -46,7 +46,7 @@ func TestRun(t *testing.T) {
 		require.NoError(t, err)
 
 		// Assert
-		require.Len(t, resp.Patches, 4)
+		require.Len(t, resp.Patches, 5)
 
 		nameOp := OperationAsserter(resp.Patches[0])
 		nameOp.requireKind(t, "add")
@@ -62,10 +62,15 @@ func TestRun(t *testing.T) {
 		appInstanceOp.requireKind(t, "add")
 		appInstanceOp.requirePath(t, "/metadata/labels/app.kubernetes.io~1instance")
 		appInstanceOp.requireValue(t, "{{ $.Release.Name }}")
+
+		appNameAnnotationOp := OperationAsserter(resp.Patches[3])
+		appNameAnnotationOp.requireKind(t, "add")
+		appNameAnnotationOp.requirePath(t, "/metadata/annotations/helm-dump~1name")
+		appNameAnnotationOp.requireValue(t, "nginx-deployment")
 	})
-	t.Run("without-labels", func(t *testing.T) {
+	t.Run("without-metadata", func(t *testing.T) {
 		// Arrange
-		fixture := test.LoadYamlFixture(t, "test/test_run/nginx-deployment-without-labels.yaml")
+		fixture := test.LoadYamlFixture(t, "test/test_run/nginx-deployment-without-metadata.yaml")
 		req := transform.PluginRequest{
 			Unstructured: *fixture,
 			Extras: map[string]string{
@@ -78,7 +83,7 @@ func TestRun(t *testing.T) {
 		require.NoError(t, err)
 
 		// Assert
-		require.Len(t, resp.Patches, 5)
+		require.Len(t, resp.Patches, 7)
 
 		nameOp := OperationAsserter(resp.Patches[0])
 		nameOp.requireKind(t, "add")
@@ -99,6 +104,17 @@ func TestRun(t *testing.T) {
 		appInstanceOp.requireKind(t, "add")
 		appInstanceOp.requirePath(t, "/metadata/labels/app.kubernetes.io~1instance")
 		appInstanceOp.requireValue(t, "{{ $.Release.Name }}")
+
+		annsOp := OperationAsserter(resp.Patches[4])
+		annsOp.requireKind(t, "add")
+		annsOp.requirePath(t, "/metadata/annotations")
+		annsOp.requireValue(t, map[string]interface{}{})
+
+		appNameAnnotationOp := OperationAsserter(resp.Patches[5])
+		appNameAnnotationOp.requireKind(t, "add")
+		appNameAnnotationOp.requirePath(t, "/metadata/annotations/helm-dump~1name")
+		appNameAnnotationOp.requireValue(t, "nginx-deployment")
+
 	})
 
 }

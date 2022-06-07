@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    helm-dump/name: nginx
+  labels:
+    app: nginx
+    app.kubernetes.io/instance: '{{ $.Release.Name }}'
+    app.kubernetes.io/name: '{{ template "my-chart.fullname" $ }}'
+  name: nginx-{{ .Release.Name }}
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: {{ .Values.nginx.appLabel }}
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - image: nginx:1.14.2
+        name: nginx
+        ports:
+        - containerPort: 80
