@@ -17,7 +17,7 @@ jobs:
           fetch-depth: 0
       - name: Fetch all tags
         run: git fetch --force --tags
-      - uses: sergeysova/jq-action@v2
+      - uses: sergeysova/jq-action@a3f0d4ff59cc1dddf023fc0b325dd75b10deec58 #v2
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
@@ -30,7 +30,7 @@ jobs:
       - name: Run tests
         run: make test
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v2
+        uses: goreleaser/goreleaser-action@b953231f81b8dfd023c58e0854a721e35037f28b #v2
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -39,7 +39,7 @@ jobs:
           version: latest
           args: release --rm-dist
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v2
+        uses: goreleaser/goreleaser-action@b953231f81b8dfd023c58e0854a721e35037f28b #v2
         if: "!startsWith(github.ref, 'refs/tags')"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -55,7 +55,7 @@ jobs:
           name: helm-dump-plugin
           path: "dist/plugin/*"
       - name: Upload bundles to release
-        uses: svenstaro/upload-release-action@v2
+        uses: svenstaro/upload-release-action@cc92c9093e5f785e23a3d654fe2671640b851b5f #v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           file: "dist/plugin/artifacts/*"
